@@ -1,4 +1,4 @@
-name: Build with vcpkg
+name: Build with vcpkg (Linux/Mac)
 
 on:
   push:
@@ -21,19 +21,28 @@ jobs:
       fail-fast: false
       max-parallel: 8
       matrix:
-        name: [windows-msvc]
+        name: [ubuntu-gcc, macos-clang]
         buildtype: [Debug, Release]
-        luajit: [on]
+        luajit: [on, off]
         include:
-          - name: windows-msvc
-            os: windows
-            os-version: latest
-            cxx: cl.exe
-            cc: cl.exe
-            triplet: x64-windows
+          - name: ubuntu-gcc
+            os: ubuntu
+            os-version: 22.04
+            cxx: g++
+            cc: gcc
+            triplet: x64-linux
             packages: >
-              boost-iostreams boost-asio boost-system boost-variant boost-lockfree boost-filesystem boost-uuid
-              glew luajit libogg libvorbis openal-soft opengl openssl physfs zlib
+              boost-iostreams boost-asio boost-system boost-variant boost-lockfree glew
+              boost-filesystem boost-uuid physfs openal-soft libogg libvorbis zlib opengl
+          - name: macos-clang
+            os: macos
+            os-version: latest
+            cxx: clang++
+            cc: clang
+            triplet: x64-osx
+            packages: >
+              boost-iostreams boost-asio boost-system boost-variant boost-lockfree glew
+              boost-filesystem boost-uuid libogg libvorbis zlib opengl
 
     steps:
       - uses: actions/checkout@v4
@@ -46,18 +55,18 @@ jobs:
       - name: Get latest CMake
         uses: lukka/get-cmake@latest
 
+      - name: Ubuntu - install opengl lua5.1 luajit
+        run: sudo apt-get install libglew-dev liblua5.1-0-dev libluajit-5.1-dev
+        if: contains( matrix.os, 'ubuntu')
+
+      - name: MacOS - install physfs pkgconfig lua5.1 luajit xquartz
+        run: brew install physfs pkgconfig lua@5.1 luajit xquartz
+        if: contains( matrix.os, 'macos')
+
       - name: Set Environment vars
         run: |
           echo "CXX=${{ matrix.cxx }}" >> $GITHUB_ENV
           echo "CC=${{ matrix.cc }}" >> $GITHUB_ENV
-
-      - name: Cache vcpkg
-        uses: actions/cache@v3
-        with:
-          path: ${{ github.workspace }}/vcpkg
-          key: vcpkg-${{ runner.os }}-${{ hashFiles('**/CMakeLists.txt') }}
-          restore-keys: |
-            vcpkg-${{ runner.os }}-
 
       - name: Run vcpkg
         uses: lukka/run-vcpkg@v7
@@ -66,14 +75,6 @@ jobs:
           vcpkgDirectory: ${{ github.workspace }}/vcpkg/
           vcpkgTriplet: ${{ matrix.triplet }}
           vcpkgGitCommitId: 6f7ffeb18f99796233b958aaaf14ec7bd4fb64b2
-
-      - name: Cache build
-        uses: actions/cache@v3
-        with:
-          path: ${{ github.workspace }}/build
-          key: build-${{ runner.os }}-${{ matrix.buildtype }}-${{ matrix.luajit }}-${{ hashFiles('**/CMakeLists.txt') }}
-          restore-keys: |
-            build-${{ runner.os }}-${{ matrix.buildtype }}-${{ matrix.luajit }}-
 
       - name: Build with CMake
         uses: lukka/run-cmake@v3
@@ -87,14 +88,8 @@ jobs:
         run: find ${{ github.workspace }}
         shell: bash
 
-      - name: Upload artifact binary (exe)
+      - name: Upload artifact binary
         uses: actions/upload-artifact@v4
         with:
           name: otclient-${{ matrix.name }}-${{ matrix.buildtype }}-luajit=${{ matrix.luajit }}-${{ github.sha }}
-          path: ${{ github.workspace }}/build/otclient.exe
-
-      - name: Upload artifact binary (dlls)
-        uses: actions/upload-artifact@v4
-        with:
-          name: otclient-${{ matrix.name }}-${{ matrix.buildtype }}-luajit=${{ matrix.luajit }}-${{ github.sha }}
-          path: ${{ github.workspace }}/build/*.dll
+          path: ${{ github.workspace }}/build/otclient 
