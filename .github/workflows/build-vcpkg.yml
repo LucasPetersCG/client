@@ -36,7 +36,7 @@ jobs:
               glew luajit libogg libvorbis openal-soft opengl openssl physfs zlib
           - name: ubuntu-gcc
             os: ubuntu
-            os-version: 20.04
+            os-version: 22.04
             cxx: g++
             cc: gcc
             triplet: x64-linux
@@ -57,7 +57,7 @@ jobs:
             luajit: off
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: true
 
@@ -91,7 +91,7 @@ jobs:
           vcpkgGitCommitId: 6f7ffeb18f99796233b958aaaf14ec7bd4fb64b2
 
       - name: Build with CMake
-        uses: lukka/run-cmake@v3
+        uses: lukka/run-cmake@v4
         with:
           buildDirectory: ${{ github.workspace }}/build
           cmakeListsOrSettingsJson: CMakeListsTxtAdvanced
@@ -103,21 +103,21 @@ jobs:
         shell: bash
 
       - name: Upload artifact binary
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: otclient-${{ matrix.name }}-${{ matrix.buildtype }}-luajit=${{ matrix.luajit }}-${{ github.sha }}
           path: ${{ github.workspace }}/build/otclient
         if: ${{ !contains(matrix.os, 'windows') }}
 
       - name: Upload artifact binary (exe)
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: otclient-${{ matrix.name }}-${{ matrix.buildtype }}-luajit=${{ matrix.luajit }}-${{ github.sha }}
           path: ${{ github.workspace }}/build/otclient.exe
         if: ${{ contains(matrix.os, 'windows') }}
 
       - name: Upload artifact binary (dlls)
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: otclient-${{ matrix.name }}-${{ matrix.buildtype }}-luajit=${{ matrix.luajit }}-${{ github.sha }}
           path: ${{ github.workspace }}/build/*.dll
