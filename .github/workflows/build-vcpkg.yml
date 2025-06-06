@@ -5,22 +5,13 @@ on:
     branches:
       - master
       - v*
-
     tags:
       - v*
 
-    paths:
-      - .github/workflows/**
-      - cmake/**
-      - src/**
-      - CMakeLists.txt
-
   pull_request:
-    paths:
-      - .github/workflows/**
-      - cmake/**
-      - src/**
-      - CMakeLists.txt
+    branches:
+      - master
+      - v*
 
 jobs:
   job:
@@ -95,39 +86,39 @@ jobs:
         uses: lukka/run-vcpkg@v7
         with:
           vcpkgArguments: ${{ matrix.packages }}
-          vcpkgDirectory: ${{ runner.workspace }}/vcpkg/
+          vcpkgDirectory: ${{ github.workspace }}/vcpkg/
           vcpkgTriplet: ${{ matrix.triplet }}
           vcpkgGitCommitId: 6f7ffeb18f99796233b958aaaf14ec7bd4fb64b2
 
       - name: Build with CMake
         uses: lukka/run-cmake@v3
         with:
-          buildDirectory: ${{ runner.workspace }}/build
+          buildDirectory: ${{ github.workspace }}/build
           cmakeListsOrSettingsJson: CMakeListsTxtAdvanced
           cmakeAppendedArgs: '-G Ninja -DCMAKE_BUILD_TYPE="${{ matrix.buildtype }}" -DLUAJIT="${{ matrix.luajit }}"'
           useVcpkgToolchainFile: true
 
       - name: dir
-        run: find $RUNNER_WORKSPACE
+        run: find ${{ github.workspace }}
         shell: bash
 
       - name: Upload artifact binary
         uses: actions/upload-artifact@v3
         with:
           name: otclient-${{ matrix.name }}-${{ matrix.buildtype }}-luajit=${{ matrix.luajit }}-${{ github.sha }}
-          path: ${{ runner.workspace }}/build/otclient
-        if: "! contains( matrix.os, 'windows')"
+          path: ${{ github.workspace }}/build/otclient
+        if: ${{ !contains(matrix.os, 'windows') }}
 
       - name: Upload artifact binary (exe)
         uses: actions/upload-artifact@v3
         with:
           name: otclient-${{ matrix.name }}-${{ matrix.buildtype }}-luajit=${{ matrix.luajit }}-${{ github.sha }}
-          path: ${{ runner.workspace }}/build/otclient.exe
-        if: contains( matrix.os, 'windows')
+          path: ${{ github.workspace }}/build/otclient.exe
+        if: ${{ contains(matrix.os, 'windows') }}
 
       - name: Upload artifact binary (dlls)
         uses: actions/upload-artifact@v3
         with:
           name: otclient-${{ matrix.name }}-${{ matrix.buildtype }}-luajit=${{ matrix.luajit }}-${{ github.sha }}
-          path: ${{ runner.workspace }}/build/*.dll
-        if: contains( matrix.os, 'windows')
+          path: ${{ github.workspace }}/build/*.dll
+        if: ${{ contains(matrix.os, 'windows') }}
