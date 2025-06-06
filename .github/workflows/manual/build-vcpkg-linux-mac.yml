@@ -68,6 +68,16 @@ jobs:
           echo "CXX=${{ matrix.cxx }}" >> $GITHUB_ENV
           echo "CC=${{ matrix.cc }}" >> $GITHUB_ENV
 
+      - name: Cache vcpkg
+        uses: actions/cache@v3
+        id: vcpkg-cache
+        continue-on-error: true
+        with:
+          path: ${{ github.workspace }}/vcpkg
+          key: vcpkg-${{ runner.os }}-${{ hashFiles('**/CMakeLists.txt') }}
+          restore-keys: |
+            vcpkg-${{ runner.os }}-
+
       - name: Run vcpkg
         uses: lukka/run-vcpkg@v7
         with:
@@ -75,6 +85,16 @@ jobs:
           vcpkgDirectory: ${{ github.workspace }}/vcpkg/
           vcpkgTriplet: ${{ matrix.triplet }}
           vcpkgGitCommitId: 6f7ffeb18f99796233b958aaaf14ec7bd4fb64b2
+
+      - name: Cache build
+        uses: actions/cache@v3
+        id: build-cache
+        continue-on-error: true
+        with:
+          path: ${{ github.workspace }}/build
+          key: build-${{ runner.os }}-${{ matrix.buildtype }}-${{ matrix.luajit }}-${{ hashFiles('**/CMakeLists.txt') }}
+          restore-keys: |
+            build-${{ runner.os }}-${{ matrix.buildtype }}-${{ matrix.luajit }}-
 
       - name: Build with CMake
         uses: lukka/run-cmake@v3
