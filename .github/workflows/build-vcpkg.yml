@@ -61,7 +61,8 @@ jobs:
           restore-keys: |
             vcpkg-${{ runner.os }}-
           enableCrossOsArchive: true
-          compression-level: 0
+          fail-on-cache-miss: false
+          lookup-only: false
 
       - name: Run vcpkg
         uses: lukka/run-vcpkg@v7
@@ -81,7 +82,8 @@ jobs:
           restore-keys: |
             build-${{ runner.os }}-${{ matrix.buildtype }}-${{ matrix.luajit }}-
           enableCrossOsArchive: true
-          compression-level: 0
+          fail-on-cache-miss: false
+          lookup-only: false
 
       - name: Build with CMake
         uses: lukka/run-cmake@v3
