@@ -120,7 +120,9 @@ jobs:
             -DVCPKG_TARGET_TRIPLET="${{ matrix.triplet }}" `
             -DCMAKE_VERBOSE_MAKEFILE=ON `
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON `
-            -DBOOST_ROOT="${{ github.workspace }}/vcpkg/installed/${{ matrix.triplet }}" `
+            -DCMAKE_PREFIX_PATH="${{ github.workspace }}/vcpkg/installed/${{ matrix.triplet }}" `
+            -DCMAKE_MODULE_PATH="${{ github.workspace }}/vcpkg/installed/${{ matrix.triplet }}/share/boost" `
+            -DBoost_DIR="${{ github.workspace }}/vcpkg/installed/${{ matrix.triplet }}/share/boost" `
             -DBoost_USE_STATIC_LIBS=ON `
             -DBoost_USE_MULTITHREADED=ON `
             -DBoost_USE_STATIC_RUNTIME=OFF `
@@ -129,6 +131,7 @@ jobs:
             -DBoost_ARCHITECTURE="-x64" `
             -DBoost_THREADAPI="win32" `
             -DCMAKE_POLICY_DEFAULT_CMP0167=NEW `
+            -DCMAKE_POLICY_DEFAULT_CMP0148=NEW `
             -B "${{ github.workspace }}/build" `
             -S "${{ github.workspace }}" `
             2>&1 | Tee-Object -FilePath "${{ github.workspace }}/build/cmake_output.log"
