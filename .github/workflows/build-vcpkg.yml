@@ -111,18 +111,22 @@ jobs:
           $env:CMAKE_BUILD_TYPE = "${{ matrix.buildtype }}"
           $env:LUAJIT = "${{ matrix.luajit }}"
           
+          $vcpkgRoot = "${{ github.workspace }}/vcpkg"
+          $vcpkgInstalled = "$vcpkgRoot/installed/${{ matrix.triplet }}"
+          $boostDir = "$vcpkgInstalled/share/boost"
+          
           Write-Host "Running CMake with verbose output..."
-          & "C:\Program Files\CMake\bin\cmake.exe" -G Ninja `
+          & "C:/Program Files/CMake/bin/cmake.exe" -G Ninja `
             -DCMAKE_BUILD_TYPE="${{ matrix.buildtype }}" `
             -DLUAJIT="${{ matrix.luajit }}" `
             -DCMAKE_MINIMUM_REQUIRED_VERSION=3.25.0 `
-            -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake" `
+            -DCMAKE_TOOLCHAIN_FILE="$vcpkgRoot/scripts/buildsystems/vcpkg.cmake" `
             -DVCPKG_TARGET_TRIPLET="${{ matrix.triplet }}" `
             -DCMAKE_VERBOSE_MAKEFILE=ON `
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON `
-            -DCMAKE_PREFIX_PATH="${{ github.workspace }}/vcpkg/installed/${{ matrix.triplet }}" `
-            -DCMAKE_MODULE_PATH="${{ github.workspace }}/vcpkg/installed/${{ matrix.triplet }}/share/boost" `
-            -DBoost_DIR="${{ github.workspace }}/vcpkg/installed/${{ matrix.triplet }}/share/boost" `
+            -DCMAKE_PREFIX_PATH="$vcpkgInstalled" `
+            -DCMAKE_MODULE_PATH="$boostDir" `
+            -DBoost_DIR="$boostDir" `
             -DBoost_USE_STATIC_LIBS=ON `
             -DBoost_USE_MULTITHREADED=ON `
             -DBoost_USE_STATIC_RUNTIME=OFF `
@@ -132,6 +136,7 @@ jobs:
             -DBoost_THREADAPI="win32" `
             -DCMAKE_POLICY_DEFAULT_CMP0167=NEW `
             -DCMAKE_POLICY_DEFAULT_CMP0148=NEW `
+            -DCMAKE_POLICY_DEFAULT_CMP0145=NEW `
             -B "${{ github.workspace }}/build" `
             -S "${{ github.workspace }}" `
             2>&1 | Tee-Object -FilePath "${{ github.workspace }}/build/cmake_output.log"
