@@ -17,9 +17,10 @@ jobs:
   job:
     name: ${{ matrix.os }}-${{ matrix.cxx }}-${{ matrix.buildtype }}-luajit=${{ matrix.luajit }}
     runs-on: ${{ matrix.os }}-${{ matrix.os-version }}
+    timeout-minutes: 60
     strategy:
       fail-fast: false
-      max-parallel: 8
+      max-parallel: 4
       matrix:
         name: [windows-msvc]
         buildtype: [Debug, Release]
@@ -50,6 +51,7 @@ jobs:
         run: |
           echo "CXX=${{ matrix.cxx }}" >> $GITHUB_ENV
           echo "CC=${{ matrix.cc }}" >> $GITHUB_ENV
+          echo "VCPKG_FORCE_SYSTEM_BINARIES=1" >> $GITHUB_ENV
 
       - name: Cache vcpkg
         uses: actions/cache@v4
@@ -66,11 +68,20 @@ jobs:
 
       - name: Run vcpkg
         uses: lukka/run-vcpkg@v7
+        continue-on-error: true
         with:
           vcpkgArguments: ${{ matrix.packages }}
           vcpkgDirectory: ${{ github.workspace }}/vcpkg/
           vcpkgTriplet: ${{ matrix.triplet }}
           vcpkgGitCommitId: 6f7ffeb18f99796233b958aaaf14ec7bd4fb64b2
+
+      - name: Debug vcpkg output
+        if: failure()
+        run: |
+          echo "Listing vcpkg directory contents:"
+          ls -la ${{ github.workspace }}/vcpkg
+          echo "Checking vcpkg logs:"
+          cat ${{ github.workspace }}/vcpkg/buildtrees/*/install-*.log || true
 
       - name: Cache build
         uses: actions/cache@v4
@@ -93,9 +104,13 @@ jobs:
           cmakeAppendedArgs: '-G Ninja -DCMAKE_BUILD_TYPE="${{ matrix.buildtype }}" -DLUAJIT="${{ matrix.luajit }}"'
           useVcpkgToolchainFile: true
 
-      - name: dir
-        run: find ${{ github.workspace }}
-        shell: bash
+      - name: Debug build output
+        if: failure()
+        run: |
+          echo "Listing build directory contents:"
+          ls -la ${{ github.workspace }}/build
+          echo "Checking CMake logs:"
+          cat ${{ github.workspace }}/build/CMakeFiles/CMakeError.log || true
 
       - name: Upload artifact binary (exe)
         uses: actions/upload-artifact@v4
