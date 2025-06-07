@@ -169,11 +169,12 @@ jobs:
 
       - name: Debug build output
         if: failure()
+        shell: pwsh
         run: |
-          echo "Listing build directory contents:"
-          ls -la build
-          echo "Checking CMake logs:"
-          find build -name "*.log" -exec echo "=== {} ===" \; -exec cat {} \;
+          Write-Host "Listing build directory contents:"
+          Get-ChildItem -Path "build" -Force
+          Write-Host "Checking CMake logs:"
+          Get-ChildItem -Path "build" -Recurse -Filter "*.log" | ForEach-Object { Write-Host "=== $($_.FullName) ==="; Get-Content $_.FullName }
 
       - name: Upload artifact binary (exe)
         uses: actions/upload-artifact@v4
