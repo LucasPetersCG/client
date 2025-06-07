@@ -46,6 +46,8 @@ jobs:
 
       - name: Get latest CMake
         uses: lukka/get-cmake@latest
+        with:
+          cmakeVersion: '3.25.0'
 
       - name: Set Environment vars
         run: |
@@ -77,11 +79,12 @@ jobs:
 
       - name: Debug vcpkg output
         if: failure()
+        shell: pwsh
         run: |
-          echo "Listing vcpkg directory contents:"
-          ls -la ${{ github.workspace }}/vcpkg
-          echo "Checking vcpkg logs:"
-          cat ${{ github.workspace }}/vcpkg/buildtrees/*/install-*.log || true
+          Write-Host "Listing vcpkg directory contents:"
+          Get-ChildItem -Path "${{ github.workspace }}/vcpkg" -Force
+          Write-Host "Checking vcpkg logs:"
+          Get-ChildItem -Path "${{ github.workspace }}/vcpkg/buildtrees" -Recurse -Filter "install-*.log" | ForEach-Object { Write-Host "=== $($_.FullName) ==="; Get-Content $_.FullName }
 
       - name: Cache build
         uses: actions/cache@v4
@@ -101,16 +104,17 @@ jobs:
         with:
           buildDirectory: ${{ github.workspace }}/build
           cmakeListsOrSettingsJson: CMakeListsTxtAdvanced
-          cmakeAppendedArgs: '-G Ninja -DCMAKE_BUILD_TYPE="${{ matrix.buildtype }}" -DLUAJIT="${{ matrix.luajit }}"'
+          cmakeAppendedArgs: '-G Ninja -DCMAKE_BUILD_TYPE="${{ matrix.buildtype }}" -DLUAJIT="${{ matrix.luajit }}" -DCMAKE_MINIMUM_REQUIRED_VERSION=3.25.0'
           useVcpkgToolchainFile: true
 
       - name: Debug build output
         if: failure()
+        shell: pwsh
         run: |
-          echo "Listing build directory contents:"
-          ls -la ${{ github.workspace }}/build
-          echo "Checking CMake logs:"
-          cat ${{ github.workspace }}/build/CMakeFiles/CMakeError.log || true
+          Write-Host "Listing build directory contents:"
+          Get-ChildItem -Path "${{ github.workspace }}/build" -Force
+          Write-Host "Checking CMake logs:"
+          Get-ChildItem -Path "${{ github.workspace }}/build/CMakeFiles" -Recurse -Filter "CMakeError.log" | ForEach-Object { Write-Host "=== $($_.FullName) ==="; Get-Content $_.FullName }
 
       - name: Upload artifact binary (exe)
         uses: actions/upload-artifact@v4
