@@ -99,22 +99,45 @@ jobs:
           fail-on-cache-miss: false
           lookup-only: false
 
-      - name: Build with CMake
-        uses: lukka/run-cmake@v3
-        with:
-          buildDirectory: ${{ github.workspace }}/build
-          cmakeListsOrSettingsJson: CMakeListsTxtAdvanced
-          cmakeAppendedArgs: '-G Ninja -DCMAKE_BUILD_TYPE="${{ matrix.buildtype }}" -DLUAJIT="${{ matrix.luajit }}" -DCMAKE_MINIMUM_REQUIRED_VERSION=3.25.0'
-          useVcpkgToolchainFile: true
+      - name: Create build directory
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "${{ github.workspace }}/build"
+          Write-Host "Created build directory"
+
+      - name: Run CMake manually
+        shell: pwsh
+        run: |
+          $env:CMAKE_BUILD_TYPE = "${{ matrix.buildtype }}"
+          $env:LUAJIT = "${{ matrix.luajit }}"
+          
+          Write-Host "Running CMake with verbose output..."
+          & "C:\Program Files\CMake\bin\cmake.exe" -G Ninja `
+            -DCMAKE_BUILD_TYPE="${{ matrix.buildtype }}" `
+            -DLUAJIT="${{ matrix.luajit }}" `
+            -DCMAKE_MINIMUM_REQUIRED_VERSION=3.25.0 `
+            -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake" `
+            -DVCPKG_TARGET_TRIPLET="${{ matrix.triplet }}" `
+            -DCMAKE_VERBOSE_MAKEFILE=ON `
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON `
+            -B "${{ github.workspace }}/build" `
+            -S "${{ github.workspace }}" `
+            2>&1 | Tee-Object -FilePath "${{ github.workspace }}/build/cmake_output.log"
+          
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "CMake failed with exit code $LASTEXITCODE"
+            Get-Content "${{ github.workspace }}/build/cmake_output.log"
+            exit 1
+          }
 
       - name: Debug build output
         if: failure()
         shell: pwsh
         run: |
           Write-Host "Listing build directory contents:"
-          Get-ChildItem -Path "${{ github.workspace }}/build" -Force
+          Get-ChildItem -Path "${{ github.workspace }}/build" -Force -Recurse
           Write-Host "Checking CMake logs:"
-          Get-ChildItem -Path "${{ github.workspace }}/build/CMakeFiles" -Recurse -Filter "CMakeError.log" | ForEach-Object { Write-Host "=== $($_.FullName) ==="; Get-Content $_.FullName }
+          Get-ChildItem -Path "${{ github.workspace }}/build" -Recurse -Filter "*.log" | ForEach-Object { Write-Host "=== $($_.FullName) ==="; Get-Content $_.FullName }
 
       - name: Upload artifact binary (exe)
         uses: actions/upload-artifact@v4
