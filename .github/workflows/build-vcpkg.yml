@@ -58,6 +58,13 @@ jobs:
           echo "VCPKG_INSTALLED=${{ github.workspace }}/vcpkg/installed/${{ matrix.triplet }}" >> $GITHUB_ENV
           echo "BOOST_DIR=${{ github.workspace }}/vcpkg/installed/${{ matrix.triplet }}/share/boost" >> $GITHUB_ENV
 
+      - name: Clone vcpkg
+        run: |
+          git clone https://github.com/Microsoft/vcpkg.git
+          cd vcpkg
+          git checkout 6f7ffeb18f99796233b958aaaf14ec7bd4fb64b2
+          ./bootstrap-vcpkg.bat
+
       - name: Cache vcpkg
         uses: actions/cache@v3
         with:
@@ -81,23 +88,24 @@ jobs:
           lookup-only: false
 
       - name: Install dependencies
+        shell: pwsh
         run: |
-          vcpkg install --triplet=${{ matrix.triplet }} \
-            boost-system \
-            boost-thread \
-            boost-filesystem \
-            boost-iostreams \
-            boost-asio \
-            boost-variant \
-            boost-lockfree \
-            glew \
-            physfs \
-            openal-soft \
-            libogg \
-            libvorbis \
-            zlib \
-            opengl \
-            lua \
+          & "${{ github.workspace }}/vcpkg/vcpkg.exe" install --triplet=${{ matrix.triplet }} `
+            boost-system `
+            boost-thread `
+            boost-filesystem `
+            boost-iostreams `
+            boost-asio `
+            boost-variant `
+            boost-lockfree `
+            glew `
+            physfs `
+            openal-soft `
+            libogg `
+            libvorbis `
+            zlib `
+            opengl `
+            lua `
             luajit
 
       - name: Run vcpkg
@@ -114,9 +122,17 @@ jobs:
         shell: pwsh
         run: |
           Write-Host "Listing vcpkg directory contents:"
-          Get-ChildItem -Path "${{ github.workspace }}/vcpkg" -Force
+          if (Test-Path "${{ github.workspace }}/vcpkg") {
+            Get-ChildItem -Path "${{ github.workspace }}/vcpkg" -Force
+          } else {
+            Write-Host "vcpkg directory does not exist"
+          }
           Write-Host "Checking vcpkg logs:"
-          Get-ChildItem -Path "${{ github.workspace }}/vcpkg/buildtrees" -Recurse -Filter "install-*.log" | ForEach-Object { Write-Host "=== $($_.FullName) ==="; Get-Content $_.FullName }
+          if (Test-Path "${{ github.workspace }}/vcpkg/buildtrees") {
+            Get-ChildItem -Path "${{ github.workspace }}/vcpkg/buildtrees" -Recurse -Filter "install-*.log" | ForEach-Object { Write-Host "=== $($_.FullName) ==="; Get-Content $_.FullName }
+          } else {
+            Write-Host "vcpkg buildtrees directory does not exist"
+          }
 
       - name: Cache build
         uses: actions/cache@v4
@@ -172,9 +188,17 @@ jobs:
         shell: pwsh
         run: |
           Write-Host "Listing build directory contents:"
-          Get-ChildItem -Path "build" -Force
+          if (Test-Path "build") {
+            Get-ChildItem -Path "build" -Force
+          } else {
+            Write-Host "build directory does not exist"
+          }
           Write-Host "Checking CMake logs:"
-          Get-ChildItem -Path "build" -Recurse -Filter "*.log" | ForEach-Object { Write-Host "=== $($_.FullName) ==="; Get-Content $_.FullName }
+          if (Test-Path "build") {
+            Get-ChildItem -Path "build" -Recurse -Filter "*.log" | ForEach-Object { Write-Host "=== $($_.FullName) ==="; Get-Content $_.FullName }
+          } else {
+            Write-Host "No build directory found"
+          }
 
       - name: Upload artifact binary (exe)
         uses: actions/upload-artifact@v4
