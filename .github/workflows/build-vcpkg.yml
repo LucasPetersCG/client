@@ -54,6 +54,9 @@ jobs:
           echo "CXX=${{ matrix.cxx }}" >> $GITHUB_ENV
           echo "CC=${{ matrix.cc }}" >> $GITHUB_ENV
           echo "VCPKG_FORCE_SYSTEM_BINARIES=1" >> $GITHUB_ENV
+          echo "VCPKG_ROOT=${{ github.workspace }}/vcpkg" >> $GITHUB_ENV
+          echo "VCPKG_INSTALLED=${{ github.workspace }}/vcpkg/installed/${{ matrix.triplet }}" >> $GITHUB_ENV
+          echo "BOOST_DIR=${{ github.workspace }}/vcpkg/installed/${{ matrix.triplet }}/share/boost" >> $GITHUB_ENV
 
       - name: Cache vcpkg
         uses: actions/cache@v4
@@ -100,70 +103,52 @@ jobs:
           lookup-only: false
 
       - name: Create build directory
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path "${{ github.workspace }}/build"
-          Write-Host "Created build directory"
+        run: mkdir -p build
 
-      - name: Run CMake manually
-        shell: pwsh
+      - name: Run CMake
         run: |
-          $env:CMAKE_BUILD_TYPE = "${{ matrix.buildtype }}"
-          $env:LUAJIT = "${{ matrix.luajit }}"
-          
-          $vcpkgRoot = "${{ github.workspace }}/vcpkg"
-          $vcpkgInstalled = "$vcpkgRoot/installed/${{ matrix.triplet }}"
-          $boostDir = "$vcpkgInstalled/share/boost"
-          
-          Write-Host "Running CMake with verbose output..."
-          & "C:/Program Files/CMake/bin/cmake.exe" -G Ninja `
-            -DCMAKE_BUILD_TYPE="${{ matrix.buildtype }}" `
-            -DLUAJIT="${{ matrix.luajit }}" `
-            -DCMAKE_MINIMUM_REQUIRED_VERSION=3.25.0 `
-            -DCMAKE_TOOLCHAIN_FILE="$vcpkgRoot/scripts/buildsystems/vcpkg.cmake" `
-            -DVCPKG_TARGET_TRIPLET="${{ matrix.triplet }}" `
-            -DCMAKE_VERBOSE_MAKEFILE=ON `
-            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON `
-            -DCMAKE_PREFIX_PATH="$vcpkgInstalled" `
-            -DCMAKE_MODULE_PATH="$boostDir" `
-            -DBoost_DIR="$boostDir" `
-            -DBoost_USE_STATIC_LIBS=ON `
-            -DBoost_USE_MULTITHREADED=ON `
-            -DBoost_USE_STATIC_RUNTIME=OFF `
-            -DBoost_DEBUG=ON `
-            -DBoost_COMPILER="-vc143" `
-            -DBoost_ARCHITECTURE="-x64" `
-            -DBoost_THREADAPI="win32" `
-            -DCMAKE_POLICY_DEFAULT_CMP0167=NEW `
-            -DCMAKE_POLICY_DEFAULT_CMP0148=NEW `
-            -DCMAKE_POLICY_DEFAULT_CMP0145=NEW `
-            -B "${{ github.workspace }}/build" `
-            -S "${{ github.workspace }}" `
-            2>&1 | Tee-Object -FilePath "${{ github.workspace }}/build/cmake_output.log"
-          
-          if ($LASTEXITCODE -ne 0) {
-            Write-Host "CMake failed with exit code $LASTEXITCODE"
-            Get-Content "${{ github.workspace }}/build/cmake_output.log"
-            exit 1
-          }
+          cmake -G Ninja \
+            -DCMAKE_BUILD_TYPE="${{ matrix.buildtype }}" \
+            -DLUAJIT="${{ matrix.luajit }}" \
+            -DCMAKE_MINIMUM_REQUIRED_VERSION=3.25.0 \
+            -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
+            -DVCPKG_TARGET_TRIPLET="${{ matrix.triplet }}" \
+            -DCMAKE_VERBOSE_MAKEFILE=ON \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            -DCMAKE_PREFIX_PATH="$VCPKG_INSTALLED" \
+            -DCMAKE_MODULE_PATH="$BOOST_DIR" \
+            -DBoost_DIR="$BOOST_DIR" \
+            -DBoost_USE_STATIC_LIBS=ON \
+            -DBoost_USE_MULTITHREADED=ON \
+            -DBoost_USE_STATIC_RUNTIME=OFF \
+            -DBoost_DEBUG=ON \
+            -DBoost_COMPILER="-vc143" \
+            -DBoost_ARCHITECTURE="-x64" \
+            -DBoost_THREADAPI="win32" \
+            -DCMAKE_POLICY_DEFAULT_CMP0167=NEW \
+            -DCMAKE_POLICY_DEFAULT_CMP0148=NEW \
+            -DCMAKE_POLICY_DEFAULT_CMP0145=NEW \
+            -DCMAKE_POLICY_DEFAULT_CMP0135=NEW \
+            -B build \
+            -S . \
+            2>&1 | tee build/cmake_output.log
 
       - name: Debug build output
         if: failure()
-        shell: pwsh
         run: |
-          Write-Host "Listing build directory contents:"
-          Get-ChildItem -Path "${{ github.workspace }}/build" -Force -Recurse
-          Write-Host "Checking CMake logs:"
-          Get-ChildItem -Path "${{ github.workspace }}/build" -Recurse -Filter "*.log" | ForEach-Object { Write-Host "=== $($_.FullName) ==="; Get-Content $_.FullName }
+          echo "Listing build directory contents:"
+          ls -la build
+          echo "Checking CMake logs:"
+          find build -name "*.log" -exec echo "=== {} ===" \; -exec cat {} \;
 
       - name: Upload artifact binary (exe)
         uses: actions/upload-artifact@v4
         with:
           name: otclient-${{ matrix.name }}-${{ matrix.buildtype }}-luajit=${{ matrix.luajit }}-${{ github.sha }}
-          path: ${{ github.workspace }}/build/otclient.exe
+          path: build/otclient.exe
 
       - name: Upload artifact binary (dlls)
         uses: actions/upload-artifact@v4
         with:
           name: otclient-${{ matrix.name }}-${{ matrix.buildtype }}-luajit=${{ matrix.luajit }}-${{ github.sha }}
-          path: ${{ github.workspace }}/build/*.dll
+          path: build/*.dll
