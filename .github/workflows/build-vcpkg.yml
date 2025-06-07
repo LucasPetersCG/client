@@ -59,17 +59,46 @@ jobs:
           echo "BOOST_DIR=${{ github.workspace }}/vcpkg/installed/${{ matrix.triplet }}/share/boost" >> $GITHUB_ENV
 
       - name: Cache vcpkg
-        uses: actions/cache@v4
-        id: vcpkg-cache
-        continue-on-error: true
+        uses: actions/cache@v3
         with:
           path: ${{ github.workspace }}/vcpkg
-          key: vcpkg-${{ runner.os }}-${{ hashFiles('**/CMakeLists.txt') }}
+          key: vcpkg-${{ runner.os }}-${{ matrix.triplet }}-${{ hashFiles('**/CMakeLists.txt') }}
           restore-keys: |
-            vcpkg-${{ runner.os }}-
+            vcpkg-${{ runner.os }}-${{ matrix.triplet }}-
           enableCrossOsArchive: true
           fail-on-cache-miss: false
           lookup-only: false
+
+      - name: Cache vcpkg installed
+        uses: actions/cache@v3
+        with:
+          path: ${{ github.workspace }}/vcpkg_installed
+          key: vcpkg-installed-${{ runner.os }}-${{ matrix.triplet }}-${{ hashFiles('**/CMakeLists.txt') }}
+          restore-keys: |
+            vcpkg-installed-${{ runner.os }}-${{ matrix.triplet }}-
+          enableCrossOsArchive: true
+          fail-on-cache-miss: false
+          lookup-only: false
+
+      - name: Install dependencies
+        run: |
+          vcpkg install --triplet=${{ matrix.triplet }} \
+            boost-system \
+            boost-thread \
+            boost-filesystem \
+            boost-iostreams \
+            boost-asio \
+            boost-variant \
+            boost-lockfree \
+            glew \
+            physfs \
+            openal-soft \
+            libogg \
+            libvorbis \
+            zlib \
+            opengl \
+            lua \
+            luajit
 
       - name: Run vcpkg
         uses: lukka/run-vcpkg@v7
@@ -110,7 +139,7 @@ jobs:
           cmake -G Ninja \
             -DCMAKE_BUILD_TYPE="${{ matrix.buildtype }}" \
             -DLUAJIT="${{ matrix.luajit }}" \
-            -DCMAKE_MINIMUM_REQUIRED_VERSION=3.25.0 \
+            -DCMAKE_MINIMUM_REQUIRED_VERSION=3.1 \
             -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
             -DVCPKG_TARGET_TRIPLET="${{ matrix.triplet }}" \
             -DCMAKE_VERBOSE_MAKEFILE=ON \
@@ -129,6 +158,11 @@ jobs:
             -DCMAKE_POLICY_DEFAULT_CMP0148=NEW \
             -DCMAKE_POLICY_DEFAULT_CMP0145=NEW \
             -DCMAKE_POLICY_DEFAULT_CMP0135=NEW \
+            -DFRAMEWORK_SOUND=ON \
+            -DFRAMEWORK_GRAPHICS=ON \
+            -DFRAMEWORK_XML=ON \
+            -DFRAMEWORK_NET=ON \
+            -DFRAMEWORK_SQL=OFF \
             -B build \
             -S . \
             2>&1 | tee build/cmake_output.log
